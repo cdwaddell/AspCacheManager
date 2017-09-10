@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  
+  <PropertyGroup>
+    <TargetFrameworks>netcoreapp2.0;netstandard2.0</TargetFrameworks>
+    <AssemblyName>Titanosoft.AspCacheManager</AssemblyName>
+    <RootNamespace>Titanosoft.AspCacheManager</RootNamespace>
+    <Authors>CD Waddell</Authors>
+    <Company>Titanosoft</Company>
+    <Description>AspCacheManager is a dotnet Standard 2.0 library for creating a cache management strategy. This package allows you to prehydrate cache, and proactively rehydrate cached items, so your users never have to wait for an expired cache item to rehydrate with updated data.</Description>
+    <PackageLicenseUrl>https://raw.githubusercontent.com/cdwaddell/AspBackgroundWorker/master/LICENSE</PackageLicenseUrl>
+    <Copyright>2017 CD Waddell</Copyright>
+    <RepositoryUrl>https://github.com/cdwaddell/AspCacheManager</RepositoryUrl>
+    <RepositoryType>GIT</RepositoryType>
+    <PackageProjectUrl>https://github.com/cdwaddell/AspCacheManager</PackageProjectUrl>
+    <VersionPrefix>1.0.1</VersionPrefix>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Hosting.Abstractions" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="2.0.0" />
+    <PackageReference Include="System.Collections.Immutable" Version="1.4.0" />
+    <PackageReference Include="Titanosoft.AspBackgroundWorker" Version="1.0.17253.9-pre" />
+  </ItemGroup>
+
+</Project>
