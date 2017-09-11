@@ -80,3 +80,25 @@ public void Configure(IApplicationBuilder app)
     ...
 }
 ```
+
+### What if I want to use your context, but don't want to give full db access to the user?
+
+Don't worry, you don't have to. You can just give full schema access. Use the following sql script to create the user for the connection given to the configuration connection string. This will isolate your other schemas from being affected by the library:
+
+```sql
+CREATE USER [AspCacheManager] WITH PASSWORD = 'strong_password_for_config'
+GO
+
+IF NOT EXISTS (SELECT 1 FROM sys.schemas WHERE [name] = 'cache') EXEC ('CREATE SCHEMA [cache]')
+GO
+
+ALTER AUTHORIZATION ON SCHEMA::[cache] TO [AspCacheManager]
+GO
+
+GRANT CREATE TABLE TO [AspCacheManager]
+GO
+```
+
+### What if I want to use your context, but I don't want to automigrate at all?
+
+You also don't have to do this, but it is a little more work. Inside of the nuget package is a "tools" folder. In that folder is a "Migrations.sql" file. If you retreive that file and run it as part of your deployment, your database will always be up to date. Note: the user running the deployment script will have to have the above access.
