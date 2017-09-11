@@ -13,7 +13,7 @@ namespace Titanosoft.AspCacheManager.Data
         Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     }
 
-    public class CacheExpirationContext: DbContext, ICacheExpirationContext
+    public sealed class CacheExpirationContext: DbContext, ICacheExpirationContext
     {
         public CacheExpirationContext(DbContextOptions<CacheExpirationContext> options) : base(options)
         {

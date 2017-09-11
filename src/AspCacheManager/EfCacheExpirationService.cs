@@ -1,34 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using Microsoft.EntityFrameworkCore;
 using Titanosoft.AspCacheManager.Data;
 using Titanosoft.AspCacheManager.Models;
 
 namespace Titanosoft.AspCacheManager
 {
-    public class EfCacheExpirationServiceOptions
-    {
-        public bool EnableMigrations { get; set; }
-    }
-
     public class EfCacheExpirationService: ICacheExpirationService
     {
-        private static EfCacheExpirationServiceOptions _options;
         private readonly ICacheExpirationContext _context;
         private readonly IDateTime _dateTime;
 
-        public EfCacheExpirationService(ICacheExpirationContext context, IDateTime dateTime, EfCacheExpirationServiceOptions options)
+        public EfCacheExpirationService(ICacheExpirationContext context, IDateTime dateTime)
         {
             _context = context;
             _dateTime = dateTime;
-
-            if (_options != null)
-                return;
-
-            _options = options;
-            if (options.EnableMigrations)
-                context.Database.Migrate();
         }
         
         public List<CacheExpiration> GetExpirationsSince(DateTime utcDateTime)

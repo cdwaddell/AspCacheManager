@@ -1,13 +1,12 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Titanosoft.AspBackgroundWorker;
 using Titanosoft.AspCacheManager.Data;
 
@@ -49,7 +48,6 @@ namespace Titanosoft.AspCacheManager
         /// <returns>The expiration builder to add your custom cache registrations</returns>
         public static ICacheExpirationBuilder AddEfExpirationService(this ICacheManagerBuilder builder, Action<DbContextOptionsBuilder> contextBuilder)
         {
-            builder.Services.AddSingleton(new EfCacheExpirationServiceOptions{EnableMigrations = true});
             builder.Services.AddTransient<ICacheExpirationService, EfCacheExpirationService>();
             builder.Services.AddDbContext<CacheExpirationContext>(contextBuilder);
             builder.Services.AddTransient<ICacheExpirationContext>(s => s.GetService<CacheExpirationContext>());
@@ -64,7 +62,6 @@ namespace Titanosoft.AspCacheManager
         /// <returns>The expiration builder to add your custom cache registrations</returns>
         public static ICacheExpirationBuilder AddCustomEfExpirationService<T>(this ICacheManagerBuilder builder) where T : class, ICacheExpirationContext
         {
-            builder.Services.AddSingleton(new EfCacheExpirationServiceOptions { EnableMigrations = false });
             builder.Services.AddTransient<ICacheExpirationService, EfCacheExpirationService>();
             builder.Services.AddTransient<ICacheExpirationContext>(s => s.GetService<T>());
 
@@ -139,25 +136,62 @@ namespace Titanosoft.AspCacheManager
         }
 
         /// <summary>
+        /// If using entity framework with custom migrations enabled, this will migrate the Configuration Context
+        /// </summary>
+        /// <param name="builder">The Application Builder for the application running this module</param>
+        /// <returns>The expiration builder to add your custom cache registrations</returns>
+        public static void CheckMigrations(this ICachedApplicationBulder builder)
+        {
+            using (var serviceScope = builder.Builder.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var database = serviceScope.ServiceProvider.GetRequiredService<ICacheExpirationContext>();
+
+                if(database == null) throw new InvalidDatabaseException("You must configure Entity Framework using AddEfExpirationService, to use this migration script.");
+                if(!(database is CacheExpirationContext)) throw new InvalidDatabaseException(database);
+
+                database.Database.Migrate();
+            }
+        }
+
+        /// <summary>
         /// This registers a job so your Expiration Service can periodically run to expire cache entries
         /// </summary>
-        /// <param name="lifetime">The Application Lifetime that manages the start and stop of your application (this is uaually injected)</param>
-        /// <param name="factory">The service scope so that cache items can be generated outside of request scopes</param>
-        public static void UseCacheManager(this IApplicationLifetime lifetime, IServiceScopeFactory factory)
+        /// <param name="builder">The Application Builder for the application to run this item int he background</param>
+        public static ICachedApplicationBulder UseCacheManager(this IApplicationBuilder builder)
         {
-            using (var scope = factory.CreateScope())
+            builder.UseBackgroundTask(new RecurringBackgroundTask(
+                "RefreshCache",
+                new TimeSpan(0, 1, 0),
+                (s, t) => s.GetService<ICacheManager>().CheckRefreshAsync(t)
+            )
             {
-                var logger = scope.ServiceProvider.GetService<ILogger<CacheManager>>();
-                lifetime.UseBackgroundTask(factory, logger,
-                    new RecurringBackgroundTask(
-                        "RefreshCache",
-                        new TimeSpan(0, 1, 0),
-                        (s, t) => s.GetService<ICacheManager>().CheckRefreshAsync(t)
-                    )
-                    {
-                        RunImmediately = true
-                    });
-            }
+                RunImmediately = true
+            });
+
+            return new CachedApplicationBulder
+            {
+                Builder = builder
+            };
+        }
+    }
+
+    public interface ICachedApplicationBulder
+    {
+        IApplicationBuilder Builder { get; set; }
+    }
+    public class CachedApplicationBulder: ICachedApplicationBulder
+    {
+        public IApplicationBuilder Builder { get; set; }
+    }
+
+    public class InvalidDatabaseException : Exception
+    {
+        public InvalidDatabaseException(string message) : base(message) { }
+
+        public InvalidDatabaseException(ICacheExpirationContext context) 
+            : base($"This migration script is for contexts of type {nameof(CacheExpirationContext)}. Please use your own custom migration process for {context.GetType()}, or switch to using AddEfExpirationService")
+        {
+            
         }
     }
 }
