@@ -1,6 +1,7 @@
 ﻿using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 
 namespace Titanosoft.AspCacheManager.Data
 {
@@ -8,6 +9,7 @@ namespace Titanosoft.AspCacheManager.Data
     {
         DbSet<ExpiredCacheKey> ExpiredCacheKeys { get; set; }
         int SaveChanges();
+        DatabaseFacade Database { get; }
         Task<int> SaveChangesAsync(CancellationToken cancellationToken);
     }
 
