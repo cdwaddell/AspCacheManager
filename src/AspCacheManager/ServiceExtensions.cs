@@ -2,11 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Threading;
-using System.Threading.Tasks;
 using Titanosoft.AspBackgroundWorker;
 using Titanosoft.AspCacheManager.Data;
 
@@ -36,8 +33,29 @@ namespace Titanosoft.AspCacheManager
         /// <returns>The expiration builder to add your custom cache registrations</returns>
         public static ICacheExpirationBuilder AddCustomExpirationService<T>(this ICacheManagerBuilder builder) where T : class, ICacheExpirationService
         {
-            builder.Services.AddTransient<ICacheExpirationService, T>();
+            builder.Services.AddTransient<ICacheExpirationService, T>(s => s.GetService<T>());
             return new CacheExpirationBuilder{ Builder = builder};
+        }
+
+        /// <summary>
+        /// Add the Entity Framework ExpirationService to tell Cache Manager to expire cache when the database has a registered expiration
+        /// </summary>
+        /// <param name="builder">The ICacheManagerBuilder provided by the AddCacheManager service registration</param>
+        /// <param name="connectionString">The connection string or connection string name</param>
+        /// <returns>The expiration builder to add your custom cache registrations</returns>
+        public static ICacheExpirationBuilder AddEfExpirationService(this ICacheManagerBuilder builder, string connectionString = "DefaultConnection")
+        {
+            var migrationsAssembly = typeof(ServiceExtensions).GetTypeInfo().Assembly.GetName().Name;
+
+            builder.Services.AddTransient<ICacheExpirationService, EfCacheExpirationService>();
+            builder.Services.AddDbContext<CacheExpirationContext>(x =>
+                x.UseSqlServer(connectionString, options =>
+                    options.MigrationsAssembly(migrationsAssembly)
+                )
+            );
+            builder.Services.AddTransient<ICacheExpirationContext>(s => s.GetService<CacheExpirationContext>());
+
+            return new CacheExpirationBuilder { Builder = builder };
         }
 
         /// <summary>
@@ -69,37 +87,14 @@ namespace Titanosoft.AspCacheManager
         }
 
         /// <summary>
-        /// Add a cache item by lambda method
-        /// </summary>
-        /// <typeparam name="T">The type of item being cached</typeparam>
-        /// <param name="builder">The expiration builder provided by the Expiration Service Registartion</param>
-        /// <param name="baseKey">The base key for this cache (keys must be unique to stop collisions)</param>
-        /// <param name="lambda">The lambda factory method for your cached items</param>
-        /// <returns>The expiration builder to add your custom cache registrations</returns>
-        public static ICacheExpirationBuilder AddLambdaCache<T>(this ICacheExpirationBuilder builder, string baseKey, Func<IDictionary<string, string>, CancellationToken, Task<T>> lambda) where T : class
-        {
-            if (LambdaCacheModule<T>.BaseKey != null) throw new ArgumentException("Cannot register the same type twice using lambda statements");
-            if (LambdaCacheModule<T>.LambdaFactory != null) throw new ArgumentException("Cannot register the same type twice using lambda statements");
-
-            LambdaCacheModule<T>.LambdaFactory = lambda ?? throw new ArgumentNullException(nameof(lambda));
-            LambdaCacheModule<T>.BaseKey = baseKey ?? throw new ArgumentNullException(nameof(baseKey));
-
-            builder.Builder.Services.AddTransient<CacheModule, LambdaCacheModule<T>>();
-            builder.Builder.Services.AddTransient<ICache<T>, LambdaCacheModule<T>>();
-
-            return builder;
-        }
-
-        /// <summary>
         /// Auto register custom cache classes in an assembly
         /// </summary>
         /// <param name="builder">The expiration builder provided by the Expiration Service Registartion</param>
-        /// <param name="assembly">The assembly to scan for CacheModules</param>
         /// <returns>The expiration builder to add your custom cache registrations</returns>
-        public static ICacheExpirationBuilder AddCustomCache<TCacheType, T>(this ICacheExpirationBuilder builder, Assembly assembly) where TCacheType: CacheModule, ICache<T>
+        public static ICacheExpirationBuilder AddCustomCache<TCacheType, T>(this ICacheExpirationBuilder builder) where TCacheType: CacheModule, ICache<T>
         {
-            builder.Builder.Services.AddTransient<CacheModule, TCacheType>();
-            builder.Builder.Services.AddTransient<ICache<T>, TCacheType>();
+            builder.Builder.Services.AddTransient<CacheModule, TCacheType>(x => x.GetService<TCacheType>());
+            builder.Builder.Services.AddTransient<ICache<T>, TCacheType>(x => x.GetService<TCacheType>());
 
             return builder;
         }
@@ -136,24 +131,6 @@ namespace Titanosoft.AspCacheManager
         }
 
         /// <summary>
-        /// If using entity framework with custom migrations enabled, this will migrate the Configuration Context
-        /// </summary>
-        /// <param name="builder">The Application Builder for the application running this module</param>
-        /// <returns>The expiration builder to add your custom cache registrations</returns>
-        public static void CheckMigrations(this ICachedApplicationBulder builder)
-        {
-            using (var serviceScope = builder.Builder.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
-            {
-                var database = serviceScope.ServiceProvider.GetRequiredService<ICacheExpirationContext>();
-
-                if(database == null) throw new InvalidDatabaseException("You must configure Entity Framework using AddEfExpirationService, to use this migration script.");
-                if(!(database is CacheExpirationContext)) throw new InvalidDatabaseException(database);
-
-                database.Database.Migrate();
-            }
-        }
-
-        /// <summary>
         /// This registers a job so your Expiration Service can periodically run to expire cache entries
         /// </summary>
         /// <param name="builder">The Application Builder for the application to run this item int he background</param>
@@ -172,6 +149,24 @@ namespace Titanosoft.AspCacheManager
             {
                 Builder = builder
             };
+        }
+
+        /// <summary>
+        /// If using entity framework with custom migrations enabled, this will migrate the Configuration Context
+        /// </summary>
+        /// <param name="builder">The Application Builder for the application running this module</param>
+        /// <returns>The expiration builder to add your custom cache registrations</returns>
+        public static void CheckMigrations(this ICachedApplicationBulder builder)
+        {
+            using (var serviceScope = builder.Builder.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var database = serviceScope.ServiceProvider.GetRequiredService<ICacheExpirationContext>();
+
+                if (database == null) throw new InvalidDatabaseException("You must configure Entity Framework using AddEfExpirationService, to use this migration script.");
+                if (!(database is CacheExpirationContext)) throw new InvalidDatabaseException(database);
+
+                database.Database.Migrate();
+            }
         }
     }
 
