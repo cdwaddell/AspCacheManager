@@ -8,6 +8,7 @@ namespace AspCacheManager.Tests
     public class CompositeCacheKeyTests
     {
         [Fact]
+        [Trait("Category", "Unit")]
         public void TestEquality()
         {
             var firstKey = new CompositeCacheKey("Test1", new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key2", "value2"));
@@ -18,6 +19,7 @@ namespace AspCacheManager.Tests
         }
 
         [Fact]
+        [Trait("Category", "Unit")]
         public void TestUnEqualityByBaseKey()
         {
             var firstKey = new CompositeCacheKey("Test1", new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key2", "value2"));
@@ -28,6 +30,7 @@ namespace AspCacheManager.Tests
         }
 
         [Fact]
+        [Trait("Category", "Unit")]
         public void TestUnEqualityByKvpValue()
         {
             var firstKey = new CompositeCacheKey("Test1", new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key2", "value2"));
@@ -38,6 +41,7 @@ namespace AspCacheManager.Tests
         }
 
         [Fact]
+        [Trait("Category", "Unit")]
         public void TestUnEqualityByKvpKey()
         {
             var firstKey = new CompositeCacheKey("Test1", new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key2", "value2"));
@@ -48,6 +52,7 @@ namespace AspCacheManager.Tests
         }
 
         [Fact]
+        [Trait("Category", "Unit")]
         public void FunctionalDictionary()
         {
             var firstKey = new CompositeCacheKey("Test1", new KeyValuePair<string, string>("key1", "value1"), new KeyValuePair<string, string>("key2", "value2"));
