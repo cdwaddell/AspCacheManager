@@ -4,6 +4,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Titanosoft.AspCacheManager.Models;
 
 namespace Titanosoft.AspCacheManager
 {
@@ -31,14 +32,12 @@ namespace Titanosoft.AspCacheManager
                 if (token.IsCancellationRequested)
                     return;
 
-                List<CompositeCacheKey> refreshKeys = null;
+                List<CacheExpiration> refreshKeys = null;
 
                 var utcNow = _dateTime.UtcNow;
 
-                if (_lastRun != null)
-                    refreshKeys = _cacheService.CacheExpirations
-                        .Where(c => _lastRun <= c.Value && c.Value <= utcNow)
-                        .Select(c => c.Key).ToList();
+                if (_lastRun.HasValue)
+                    refreshKeys = _cacheService.GetExpirationsSince(_lastRun.Value);
 
                 _lastRun = utcNow;
                 
@@ -51,7 +50,7 @@ namespace Titanosoft.AspCacheManager
                     try
                     {
                         //if we have never run this before, or somone flagged this as expired, or if it expired naturally
-                        if (refreshKeys == null || refreshKeys.Contains(subModule) || module.CheckExpiration(subModule.SubKeys))
+                        if (refreshKeys == null || refreshKeys.Any(x => Equals(x.CacheKey, subModule)) || module.CheckExpiration(subModule.SubKeys))
                         {
                             await module.Hydrate(subModule.SubKeys, token);
                         }

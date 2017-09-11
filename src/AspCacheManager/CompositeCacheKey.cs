@@ -20,9 +20,15 @@ namespace Titanosoft.AspCacheManager
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
+            if (BaseCacheKey != other.BaseCacheKey) return false;
 
-            return !other.SubKeys.Any(kvp => !SubKeys.ContainsKey(kvp.Key) || kvp.Value != SubKeys[kvp.Key]) 
-                   && SubKeys.All(kvp => other.SubKeys.ContainsKey(kvp.Key));
+            var allOthersMatch = other.SubKeys.All(kvp => 
+                SubKeys.ContainsKey(kvp.Key) &&
+                kvp.Value == SubKeys[kvp.Key]
+            );
+            var otherContainsAll = SubKeys.All(kvp => other.SubKeys.ContainsKey(kvp.Key));
+
+            return allOthersMatch && otherContainsAll;
         }
 
         public override bool Equals(object obj)

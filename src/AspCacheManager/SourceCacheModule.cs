@@ -6,7 +6,12 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace Titanosoft.AspCacheManager
 {
-    public abstract class SourceCacheModule<T> : CacheModule
+    public interface ICache<out T>
+    {
+        T Get(CompositeCacheKey key);
+    }
+
+    public abstract class SourceCacheModule<T> : CacheModule, ICache<T>
     {
         private readonly IMemoryCache _memCache;
         protected SourceCacheModule(string baseKey, IDateTime dateTime, IMemoryCache memCache)
